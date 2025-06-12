@@ -21,17 +21,20 @@ COPY msp430-emu-uctf .
 RUN make msp430-emu
 
 # The app!
-FROM python:3.12-slim-bookworm
-RUN echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable.list
-RUN echo "Package: *\nPin: release a=unstable\nPin-Priority: 90" > /etc/apt/preferences.d/unstable.pref
-RUN apt update
-RUN apt update && apt -t unstable install --no-install-recommends -y gdb-msp430 && apt install -y --no-install-recommends libglib2.0-0
+FROM ubuntu:22.04
+RUN apt update && apt install -y --no-install-recommends \
+        python3 \
+        python3-pip \
+        python3-dev \
+        gdb-msp430 \
+        libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=naken_builder /naken_asm/naken_asm /bin
 COPY --from=naken_builder /naken_asm/naken_util /bin
 COPY --from=emulator_builder /msp430-emu-uctf/msp430-emu /bin
 
 WORKDIR /app
 COPY app .
-RUN pip install -e . gunicorn tox
+RUN pip3 install -e . gunicorn tox
 
 CMD gunicorn --bind=0.0.0.0:$PORT microserver.views:app --threads=32 --access-logfile=- --access-logformat="%(t)s %(h)s %(l)s %(r)s %(l)s %(s)s (%(B)s)"
